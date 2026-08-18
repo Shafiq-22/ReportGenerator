@@ -66,6 +66,7 @@ Open http://localhost:3000 and sign up — the first account becomes the admin.
 | `pnpm lint` | ESLint |
 | `pnpm typecheck` | `tsc --noEmit` |
 | `pnpm test` | Vitest unit tests |
+| `pnpm test:db` | Apply migrations to a throwaway database and assert the RLS policies |
 | `pnpm db:start` | Start the local Supabase stack |
 | `pnpm db:reset` | Reset the local database and re-apply migrations |
 | `pnpm db:types` | Regenerate `lib/supabase/database.types.ts` from the live schema |

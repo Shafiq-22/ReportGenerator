@@ -46,21 +46,30 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
           NEXT_PUBLIC_SUPABASE_ANON_KEY: build-placeholder
 
-  migrations:
-    name: Validate migrations
+  database:
+    name: Migrations and RLS policies
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - uses: actions/checkout@v4
 
-      - uses: supabase/setup-cli@v1
-        with:
-          version: latest
-
-      # Applies every migration to a throwaway local database, which catches
-      # bad SQL and broken RLS policies before they reach an environment.
-      - name: Start Supabase and apply migrations
-        run: supabase db start
-
-      - name: Verify migrations are up to date
-        run: supabase db diff --schema public
+      # Applies every migration to a throwaway database and asserts the RLS
+      # rules: a viewer cannot write, one author cannot edit another's report,
+      # nobody can escalate their own role. A failure here blocks the merge.
+      - name: Apply migrations and run RLS assertions
+        run: ./scripts/test-db.sh
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
