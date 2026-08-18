@@ -86,9 +86,51 @@ Report builds never run inline in a request:
 6. The finished file lands in the private `report-exports` bucket and is delivered
    through a short-lived signed URL.
 
-A **Vercel Cron** sweeper (`/api/cron/sweep`, every minute) requeues jobs whose worker
-died and picks up any trigger that was lost, giving at-least-once execution without a
-separate queue service.
+A **Vercel Cron** sweeper (`/api/cron/sweep`) requeues jobs whose worker died and picks
+up any trigger that was lost, giving at-least-once execution without a separate queue
+service. The common path never waits for it — `after()` triggers the worker immediately —
+so the sweeper only matters for the rare stuck job.
+
+## Deploying to Vercel
+
+The app targets the **Vercel Hobby (free) plan** out of the box. Two things must be true
+before a deploy actually works:
+
+**1. Deploy the branch that has the app.** Vercel builds the project's *production
+branch* (`main` by default). Make sure the application code is on it — merge the app PR
+into `main`, or point the project's production branch (Project → Settings → Git) at the
+branch that contains the app. A `main` that only has a README deploys an empty site.
+
+**2. Set the environment variables** (Project → Settings → Environment Variables), for
+Production and Preview:
+
+| Variable | Where it comes from |
+|----------|---------------------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase → Project Settings → API |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase → Project Settings → API |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Project Settings → API (server-only) |
+| `WORKER_SECRET` | any long random string you generate |
+
+`NEXT_PUBLIC_SITE_URL` is optional — Vercel derives the URL automatically.
+
+**3. Point it at a Supabase project** with these migrations applied (`supabase db push`,
+or the SQL editor). In Supabase → Authentication → URL Configuration, set the Site URL and
+add `https://<your-app>.vercel.app/**` to the redirect allow-list.
+
+Without steps 2–3 the site builds but every page returns a 500, because the app throws on
+missing configuration by design (see `lib/env.ts`).
+
+### Hobby vs Pro
+
+The defaults are the Hobby-plan maximums so the deploy just works:
+
+| Setting | Hobby default | On Pro |
+|---------|---------------|--------|
+| Cron sweep (`vercel.json`) | once daily (`0 4 * * *`) | raise to `* * * * *` for a one-minute safety net |
+| Worker `maxDuration` (`app/api/worker/report/route.ts`) | `60` s | raise to `300` (enable Fluid Compute) for large, image-heavy reports |
+
+Reports still generate immediately on both plans via the direct `after()` trigger; the Pro
+knobs only shorten the fallback window and lift the ceiling on very large reports.
 
 ## Environment variables
 

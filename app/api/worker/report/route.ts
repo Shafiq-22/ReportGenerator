@@ -12,8 +12,12 @@ import { generateReportVersion } from '@/lib/reports/generate'
  */
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
-/** Vercel caps this by plan; Pro/Fluid allows the extended window we want. */
-export const maxDuration = 300
+/**
+ * Vercel caps this by plan: Hobby (free) allows at most 60s, so that is the
+ * safe default that deploys everywhere. On Pro, raise this to 300 (with Fluid
+ * Compute) for the extended window large, image-heavy reports need.
+ */
+export const maxDuration = 60
 
 const MAX_ATTEMPTS = 3
 
